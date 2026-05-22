@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word to PDF Converter - No Signup Required</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="badge">✨ 100% FREE • NO SIGNUP • NO HASSLE ✨</div>
+            
+            <h1>📄 Word to PDF Converter</h1>
+            <p class="subtitle">Convert your documents in seconds. No registration, no email, no credit card.</p>
+            
+            <div class="promise">
+                <h2>🚫 No Signup Required. Ever.</h2>
+                <p>Just upload your Word document and download your PDF. That's it.<br>No questions asked. No hidden fees. No tricks.</p>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p class="upload-title"><strong>Drag & drop your file here</strong></p>
+                <p class="upload-hint">or click to browse</p>
+                <p class="file-types">Supports .docx and .doc files up to 10MB</p>
+                <input type="file" id="fileInput" accept=".docx,.doc" style="display: none;">
+            </div>
+            
+            <button id="convertBtn">Convert to PDF →</button>
+            
+            <div id="result"></div>
+            
+            <div class="features">
+                <span class="feature">No credit card</span>
+                <span class="feature">No account</span>
+                <span class="feature">No email</span>
+                <span class="feature">No tracking</span>
+            </div>
+            
+            <div class="limitations">
+                <h3>📋 Being transparent about limitations</h3>
+                <ul>
+                    <li><strong>Max file size:</strong> 10MB per document (keeps the server fast for everyone)</li>
+                    <li><strong>Fair usage:</strong> 5 conversions per hour per person (prevents abuse, no signup needed)</li>
+                    <li><strong>Queue system:</strong> If busy, you might wait 10-30 seconds</li>
+                    <li><strong>Files auto-delete:</strong> Your document is deleted immediately after conversion</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            <p>🔒 Files deleted after conversion • No data stored • <a href="#">Privacy Policy</a> | <a href="#">Terms</a></p>
+            <p style="margin-top: 16px; font-size: 14px;">Made with ❤️ for a hassle-free web</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
