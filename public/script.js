@@ -1,4 +1,4 @@
-// script.js - All frontend functionality
+// script.js - Complete frontend with PDF download
 
 // DOM Elements
 const uploadArea = document.getElementById('uploadArea');
@@ -45,18 +45,18 @@ function handleFile(file) {
     }
     
     selectedFile = file;
-    showResult(`Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'success');
+    showResult(`✓ Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'success');
 }
 
 function showResult(message, type) {
-    result.innerHTML = `<div class="result-${type}">${type === 'success' ? '✓' : type === 'error' ? '❌' : 'ℹ️'} ${message}</div>`;
+    result.innerHTML = `<div class="result-${type}">${message}</div>`;
 }
 
 function showLoading(message) {
     result.innerHTML = `<div class="result-info"><span class="spinner"></span> ${message}</div>`;
 }
 
-// Conversion
+// Conversion with PDF Download
 convertBtn.addEventListener('click', async () => {
     if (!selectedFile) {
         showResult('Please select a file first', 'error');
@@ -66,8 +66,9 @@ convertBtn.addEventListener('click', async () => {
     const formData = new FormData();
     formData.append('document', selectedFile);
     
-    showLoading('Converting... Please wait');
+    showLoading('Converting to PDF... This may take a few seconds');
     convertBtn.disabled = true;
+    convertBtn.textContent = 'Converting...';
     
     try {
         const response = await fetch('/convert', {
@@ -76,15 +77,43 @@ convertBtn.addEventListener('click', async () => {
         });
         
         if (response.ok) {
-            const data = await response.json();
-            showResult(`${data.message}<br>File size: ${(data.size / 1024 / 1024).toFixed(2)} MB`, 'success');
+            // Get the PDF as a blob
+            const blob = await response.blob();
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Get filename from Content-Disposition header or create one
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = 'converted.pdf';
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="(.+)"/);
+                if (match) filename = match[1];
+            } else {
+                filename = selectedFile.name.replace(/\.docx?$/i, '.pdf');
+            }
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showResult(`✓ Success! ${filename} has been downloaded.`, 'success');
+            
+            // Reset for next conversion
+            selectedFile = null;
+            fileInput.value = '';
         } else {
             const error = await response.json();
-            showResult(`Error: ${error.error}`, 'error');
+            showResult(`❌ Error: ${error.error}`, 'error');
         }
     } catch (error) {
-        showResult(`Error: ${error.message}`, 'error');
+        showResult(`❌ Error: ${error.message}. Please check if LibreOffice is installed.`, 'error');
     } finally {
         convertBtn.disabled = false;
+        convertBtn.textContent = 'Convert to PDF →';
     }
 });
