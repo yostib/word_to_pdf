@@ -1,0 +1,27 @@
+{
+  "total_conversions": 7,
+  "total_unique_ips": [
+    "::1"
+  ],
+  "daily_stats": {
+    "2026-05-22": {
+      "conversions": 2,
+      "unique_ips": [
+        "::1"
+      ],
+      "total_size_mb": 0.028841018676757812
+    },
+    "2026-05-25": {
+      "conversions": 5,
+      "unique_ips": [
+        "::1"
+      ],
+      "total_size_mb": 0.9632062911987305
+    }
+  },
+  "hourly_distribution": {
+    "19": 5,
+    "23": 2
+  },
+  "failed_conversions": 0
+}

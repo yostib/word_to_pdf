@@ -56,7 +56,7 @@ function showLoading(message) {
     result.innerHTML = `<div class="result-info"><span class="spinner"></span> ${message}</div>`;
 }
 
-// Conversion with PDF Download
+// Enhanced conversion with queue handling
 convertBtn.addEventListener('click', async () => {
     if (!selectedFile) {
         showResult('Please select a file first', 'error');
@@ -76,6 +76,12 @@ convertBtn.addEventListener('click', async () => {
             body: formData
         });
         
+        // Check if queued
+        const queuePosition = response.headers.get('X-Queue-Position');
+        if (response.status === 202 && queuePosition > 1) {
+            showResult(`⏳ Server is busy. Your file is #${queuePosition} in queue. Please wait...`, 'info');
+        }
+        
         if (response.ok) {
             // Get the PDF as a blob
             const blob = await response.blob();
@@ -85,7 +91,7 @@ convertBtn.addEventListener('click', async () => {
             const a = document.createElement('a');
             a.href = url;
             
-            // Get filename from Content-Disposition header or create one
+            // Get filename
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = 'converted.pdf';
             if (contentDisposition) {
@@ -106,12 +112,15 @@ convertBtn.addEventListener('click', async () => {
             // Reset for next conversion
             selectedFile = null;
             fileInput.value = '';
+        } else if (response.status === 429) {
+            const error = await response.json();
+            showResult(`⏰ ${error.error}`, 'error');
         } else {
             const error = await response.json();
             showResult(`❌ Error: ${error.error}`, 'error');
         }
     } catch (error) {
-        showResult(`❌ Error: ${error.message}. Please check if LibreOffice is installed.`, 'error');
+        showResult(`❌ Error: ${error.message}`, 'error');
     } finally {
         convertBtn.disabled = false;
         convertBtn.textContent = 'Convert to PDF →';
