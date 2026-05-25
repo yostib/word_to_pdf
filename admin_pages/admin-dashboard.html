@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Word to PDF Converter</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #111827;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .page {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 12px;
+            background: #4338ca;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+            padding: 28px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+        }
+        .metric {
+            background: #eef2ff;
+            padding: 18px;
+            border-radius: 18px;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+        }
+        .metric strong {
+            font-size: 28px;
+            color: #1f2937;
+        }
+        .metric span {
+            color: #4b5563;
+        }
+        .report {
+            line-height: 1.7;
+            color: #374151;
+            margin-top: 16px;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+        }
+        .report-table th,
+        .report-table td {
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .report-table th {
+            background: #eef2ff;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .report-table td {
+            background: #ffffff;
+            color: #374151;
+        }
+        .report-bullets {
+            margin-top: 18px;
+            padding-left: 20px;
+        }
+        .report-bullets li {
+            margin-bottom: 10px;
+        }
+        .report-title {
+            margin-top: 24px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .loading {
+            color: #6b7280;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 16px;
+            border-radius: 16px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p>Secure statistics and a plain-English report for your hosted converter.</p>
+            </div>
+            <button class="button" id="logoutBtn">Logout</button>
+        </div>
+
+        <div class="card">
+            <h2>Live Summary</h2>
+            <div class="grid">
+                <div class="metric">
+                    <strong id="totalConversions">—</strong>
+                    <span>Total conversions</span>
+                </div>
+                <div class="metric">
+                    <strong id="uniqueIps">—</strong>
+                    <span>Unique visitor IPs</span>
+                </div>
+                <div class="metric">
+                    <strong id="failedConversions">—</strong>
+                    <span>Failed conversions</span>
+                </div>
+                <div class="metric">
+                    <strong id="currentQueue">—</strong>
+                    <span>Current queue length</span>
+                </div>
+                <div class="metric">
+                    <strong id="activeConversions">—</strong>
+                    <span>Active conversions</span>
+                </div>
+                <div class="metric">
+                    <strong id="uptime">—</strong>
+                    <span>Server uptime</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Daily Report</h2>
+            <div class="grid">
+                <div class="metric">
+                    <strong id="todayConversions">—</strong>
+                    <span>Conversions today</span>
+                </div>
+                <div class="metric">
+                    <strong id="todaySize">—</strong>
+                    <span>Today total size (MB)</span>
+                </div>
+            </div>
+            <div class="report" id="reportText">
+                <p class="loading">Loading report...</p>
+            </div>
+        </div>
+
+        <div class="error" id="errorBox" style="display:none"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        const errorBox = document.getElementById('errorBox');
+        const reportText = document.getElementById('reportText');
+
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours}h ${mins}m ${secs}s`;
+        }
+
+        function renderReport(data) {
+            const analytics = data.analytics || {};
+            const queue = data.queue || {};
+            const today = new Date().toISOString().split('T')[0];
+            const daily = analytics.daily_stats?.[today] || { conversions: 0, unique_ips: [], total_size_mb: 0 };
+
+            document.getElementById('totalConversions').textContent = analytics.total_conversions ?? 0;
+            document.getElementById('uniqueIps').textContent = (analytics.total_unique_ips || []).length;
+            document.getElementById('failedConversions').textContent = analytics.failed_conversions ?? 0;
+            document.getElementById('currentQueue').textContent = queue.current_queue_length ?? 0;
+            document.getElementById('activeConversions').textContent = queue.active_conversions ?? 0;
+            document.getElementById('uptime').textContent = formatUptime(data.uptime ?? 0);
+            document.getElementById('todayConversions').textContent = daily.conversions ?? 0;
+            document.getElementById('todaySize').textContent = (daily.total_size_mb || 0).toFixed(2);
+            reportText.innerHTML = `
+                <div class="report-title">Report Summary</div>
+                <table class="report-table">
+                    <tr><th>Report period</th><td>${today}</td></tr>
+                    <tr><th>Total conversions (all time)</th><td>${analytics.total_conversions ?? 0}</td></tr>
+                    <tr><th>Conversions today</th><td>${daily.conversions ?? 0}</td></tr>
+                    <tr><th>Unique visitor IPs today</th><td>${daily.unique_ips?.length ?? 0}</td></tr>
+                    <tr><th>Data processed today</th><td>${(daily.total_size_mb || 0).toFixed(2)} MB</td></tr>
+                    <tr><th>Failed conversions (all time)</th><td>${analytics.failed_conversions ?? 0}</td></tr>
+                    <tr><th>Current queue depth</th><td>${queue.current_queue_length ?? 0}</td></tr>
+                    <tr><th>Active conversions</th><td>${queue.active_conversions ?? 0}</td></tr>
+                    <tr><th>System uptime</th><td>${formatUptime(data.uptime ?? 0)}</td></tr>
+                </table>
+                <div class="report-title">Operational notes</div>
+                <ul class="report-bullets">
+                    <li>Today's conversion volume is <strong>${daily.conversions ?? 0}</strong>, indicating current load.</li>
+                    <li>Unique IPs recorded today: <strong>${daily.unique_ips?.length ?? 0}</strong>.</li>
+                    <li>Average payload processed per document is <strong>${daily.conversions ? ((daily.total_size_mb || 0) / daily.conversions).toFixed(2) : '0.00' } MB</strong>.</li>
+                    <li>Active conversions are <strong>${queue.active_conversions ?? 0}</strong>, while queue depth is <strong>${queue.current_queue_length ?? 0}</strong>.</li>
+                    <li>Track reported failed conversions and investigate recurring issues if the number remains high.</li>
+                </ul>
+            `;
+            errorBox.style.display = 'none';
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/stats', {
+                    credentials: 'same-origin'
+                });
+                if (response.status === 401) {
+                    window.location.href = '/admin';
+                    return;
+                }
+                const data = await response.json();
+                renderReport(data);
+            } catch (err) {
+                errorBox.textContent = 'Unable to load admin statistics. Please try again.';
+                errorBox.style.display = 'block';
+                reportText.textContent = '';
+            }
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch('/admin/logout', { method: 'POST', credentials: 'same-origin' });
+            } finally {
+                window.location.href = '/admin';
+            }
+        });
+
+        loadStats();
+    </script>
+</body>
+</html>

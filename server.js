@@ -249,8 +249,47 @@ function addToQueue(req, res, next) {
 }
 
 // ============ EXPRESS APP ============
+app.use(express.json());
 app.use(express.static('public'));
 app.use('/convert', limiter);
+
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'convert123';
+const ADMIN_SESSION_TTL = Number(process.env.ADMIN_SESSION_TTL_MS) || 1000 * 60 * 60; // 1 hour
+const adminSessions = new Map();
+
+function makeAdminSession() {
+  const sessionId = uuidv4();
+  adminSessions.set(sessionId, Date.now() + ADMIN_SESSION_TTL);
+  return sessionId;
+}
+
+function validateAdminSession(sessionId) {
+  if (!sessionId) return false;
+  const expires = adminSessions.get(sessionId);
+  if (!expires) return false;
+  if (Date.now() > expires) {
+    adminSessions.delete(sessionId);
+    return false;
+  }
+  return true;
+}
+
+function getCookieValue(req, name) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(';').map(c => c.trim().split('='));
+  const cookie = cookies.find(([key]) => key === name);
+  return cookie ? cookie[1] : null;
+}
+
+function requireAdminSession(req, res, next) {
+  const sessionId = getCookieValue(req, 'admin_session');
+  if (!validateAdminSession(sessionId)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
 
 // Conversion endpoint
 app.post('/convert', upload.single('document'), (req, res) => {
@@ -271,47 +310,60 @@ app.post('/convert', upload.single('document'), (req, res) => {
   addToQueue(req, res);
 });
 
-// ============ ADMIN DASHBOARD ============
+// ============ ADMIN PAGES ============
 app.get('/admin', (req, res) => {
-  // Simple password protection (you can change this)
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
-    return res.status(401).send('Admin access required');
+  res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
+app.post('/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username !== ADMIN_USER || password !== ADMIN_PASS) {
+    return res.status(401).json({ error: 'Invalid credentials' });
   }
-  
-  const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString().split(':');
-  const username = credentials[0];
-  const password = credentials[1];
-  
-  // CHANGE THIS PASSWORD! (username: admin, password: change_this)
-  if (username !== 'admin' || password !== 'convert123') {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
-    return res.status(401).send('Invalid credentials');
+
+  const sessionId = makeAdminSession();
+  res.cookie('admin_session', sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: ADMIN_SESSION_TTL
+  });
+
+  res.json({ success: true });
+});
+
+app.post('/admin/logout', (req, res) => {
+  const sessionId = getCookieValue(req, 'admin_session');
+  if (sessionId) {
+    adminSessions.delete(sessionId);
   }
-  
-  // Send admin HTML
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+
+  res.clearCookie('admin_session');
+  res.json({ success: true });
+});
+
+app.get('/admin/dashboard', (req, res) => {
+  const sessionId = getCookieValue(req, 'admin_session');
+  if (!validateAdminSession(sessionId)) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  res.sendFile(path.join(__dirname, 'admin_pages', 'admin-dashboard.html'));
 });
 
 // Admin stats endpoint (JSON)
 app.get('/admin/stats', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Basic ')) {
+  const sessionId = getCookieValue(req, 'admin_session');
+  if (!validateAdminSession(sessionId)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
-  const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString().split(':');
-  if (credentials[0] !== 'admin' || credentials[1] !== 'convert123') {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
+
   const queueInfo = {
     current_queue_length: queue.length,
     active_conversions: activeConversions,
     max_concurrent: MAX_CONCURRENT
   };
-  
+
   res.json({
     analytics,
     queue: queueInfo,
@@ -335,5 +387,5 @@ app.listen(PORT, () => {
   console.log(`📁 Temp directory: ${tempDir}`);
   console.log(`🔄 Max concurrent conversions: ${MAX_CONCURRENT}`);
   console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`🔐 Admin credentials: admin / convert123 (CHANGE THIS!)`);
+  console.log(`🔐 Admin user is secured by environment variables; do not expose credentials in logs.`);
 });
