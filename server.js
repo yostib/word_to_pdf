@@ -371,6 +371,15 @@ app.get('/admin/stats', (req, res) => {
   });
 });
 
+// Serve public legal pages at friendly paths
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
